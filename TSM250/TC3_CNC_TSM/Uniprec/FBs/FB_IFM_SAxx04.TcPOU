@@ -1,0 +1,105 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.9">
+  <POU Name="FB_IFM_SAxx04" Id="{62f4c447-c39f-4498-b2b2-6138dadb9c4f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_IFM_SAxx04
+VAR_INPUT
+	Grenzwert: REAL; //m/s
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	IOData AT %I*:UDINT;
+	IOData2:DWORD;
+	Durchfluss:REAL;//in 0-120%
+	Temperatur:REAL;//in °C
+	Sensor :BOOL:=FALSE;
+	notSensor :BOOL:=FALSE;
+	OUT1: BOOL;
+	OUT2: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IOData2:=UDINT_TO_DWORD(IOData);
+OUT1:=GETBIT32(inVal32:= IOData2, bitNo:= 0);
+OUT2:=GETBIT32(inVal32:= IOData2, bitNo:= 1);
+IOData2:=SHR32(IOData2, 2);
+Temperatur:=UDINT_TO_REAL(IOData2 AND 16#3FFF)*0.1;
+IOData2:=SHR32(IOData2,14);
+Durchfluss:=UDINT_TO_REAL(IOData2 AND 16#FFFF)*0.001;
+
+IF durchfluss>grenzwert THEN
+	Sensor:=TRUE;
+ELSE
+	Sensor:=FALSE;
+END_IF
+notSensor:=NOT Sensor;]]></ST>
+    </Implementation>
+    <Method Name="getFlow" Id="{d1962a6a-13c2-4543-b2ab-917e6e7be82e}">
+      <Declaration><![CDATA[METHOD getFlow : real
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getFlow:=Durchfluss;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getFlowString" Id="{4993c41b-768a-4a4b-9821-017d50bac5cf}">
+      <Declaration><![CDATA[METHOD getFlowString : string
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getFlowString:=CONCAT(STR1:=REAL_TO_STRING(INT_TO_REAL(REAL_TO_INT(Durchfluss * 100.0)) / 100.0), STR2:=' m/s');]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getTemp" Id="{541caff8-d036-4442-b780-538d21a79512}">
+      <Declaration><![CDATA[METHOD getTemp : real
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getTemp:=Temperatur;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getTempString" Id="{c7f4531f-961c-486e-ab82-1a5626105232}">
+      <Declaration><![CDATA[METHOD getTempString : string
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getTempString:=CONCAT(STR1:=REAL_TO_STRING(Temperatur), STR2:=' °C');]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="isActive" Id="{edd7f19f-d489-45a6-8267-a0ab01266479}">
+      <Declaration><![CDATA[METHOD isActive : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Sensor then isActive:=true; else isActive:=false; End_if]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_IFM_SAxx04">
+      <LineId Id="120" Count="5" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="128" Count="4" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="34" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SAxx04.getFlow">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SAxx04.getFlowString">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SAxx04.getTemp">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SAxx04.getTempString">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SAxx04.isActive">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

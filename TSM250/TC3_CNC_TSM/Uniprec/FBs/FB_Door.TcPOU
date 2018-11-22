@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.9">
+  <POU Name="FB_Door" Id="{13b8ed84-3df6-4be1-a365-da4e090bc978}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Door
+VAR
+	Actor AT %Q*:BOOL;
+	Sensor AT %I*:BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Close" Id="{9303b82d-af39-49d7-b61b-2b5583551cd0}">
+      <Declaration><![CDATA[METHOD Close : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Actor:=false;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="isLocked" Id="{268a71b7-8e62-40bb-ba2d-da39eaa4695e}">
+      <Declaration><![CDATA[METHOD isLocked : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT actor AND sensor THEN
+	isLocked:=TRUE;
+ELSE
+	isLocked:=FALSE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Open" Id="{e621c13a-faf3-45f9-91fa-1f05c55c12b4}">
+      <Declaration><![CDATA[METHOD Open : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Actor:=true;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Toggle" Id="{f0309b50-75fd-4a13-bcc1-544d21e78956}">
+      <Declaration><![CDATA[METHOD Toggle : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Actor:=not actor;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Door">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Door.Close">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Door.isLocked">
+      <LineId Id="6" Count="0" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="7" Count="2" />
+    </LineIds>
+    <LineIds Name="FB_Door.Open">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Door.Toggle">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

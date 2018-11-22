@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.9">
+  <POU Name="FB_Actor" Id="{a6cdb25e-faff-4ea9-8b03-4bb80a8c6fec}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Actor
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	Actor AT %Q*:BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="isActive" Id="{ee71c033-2365-40f7-b2cf-06fe6b1de09c}">
+      <Declaration><![CDATA[METHOD isActive : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[isActive:=Actor;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="setState" Id="{f4de77f2-8abe-4e31-8885-38172aa43e1d}">
+      <Declaration><![CDATA[METHOD setState : BOOL
+VAR_INPUT
+	input_state:bool;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Actor:=input_state;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Start" Id="{f2fc61c6-5da3-4394-bec3-39ce668b21e5}">
+      <Declaration><![CDATA[METHOD Start : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Actor:=true;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Stop" Id="{2b8e146a-47f0-47a0-ab0f-de9cc3bb8113}">
+      <Declaration><![CDATA[METHOD Stop : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Actor:=false;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Toggle" Id="{be65ed87-3e59-47e8-97ed-779c0b5b83fa}">
+      <Declaration><![CDATA[METHOD Toggle : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Actor:=not Actor;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Actor">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Actor.isActive">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Actor.setState">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Actor.Start">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Actor.Stop">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Actor.Toggle">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

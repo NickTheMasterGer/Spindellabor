@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.9">
+  <POU Name="FB_BeckhoffTaster" Id="{e6bb3d27-afda-40cb-bb1b-b1fb22b38c68}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_BeckhoffTaster
+VAR_INPUT
+	schaltend:BOOL; //true, schaltende funktion, false tastende
+	Lock:BOOL:=FALSE; //Lock Input
+	long_time: TIME;
+END_VAR
+VAR_OUTPUT
+	state:BOOL:=FALSE;
+END_VAR
+VAR
+	KeyBit AT %I*:BIT;
+	LED AT %Q*:BIT;
+	NotLED AT %Q*:BIT;
+	KEY:BOOL;
+	KeyTrig:F_TRIG;
+	Key_bool_old:bool;
+	keywaspushed:BOOL;
+	longon:TON;
+	keywaslong: BOOL;
+	rising_edge: BOOL;
+	falling_edge: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF KeyBit=1 THEN KEY:=TRUE; ELSE KEY:=FALSE; END_IF
+IF Lock THEN 
+	KEY:=FALSE;
+END_IF
+IF state THEN
+	LED:=1;
+	NotLED:=0;
+ELSE
+	LED:=0;
+	NotLED:=1;
+END_IF
+
+IF KEY AND NOT key_bool_old THEN rising_edge:=TRUE; END_IF
+IF NOT KEY AND key_bool_old THEN falling_edge:=TRUE; END_IF
+IF rising_edge AND falling_edge THEN
+	keywaspushed:=TRUE;
+	rising_edge:=FALSE;
+	falling_edge:=FALSE;
+	IF schaltend THEN
+		state:=NOT state;
+	END_IF
+END_IF
+
+IF NOT rising_edge AND falling_edge THEN falling_edge:=FALSE; END_IF;
+
+IF NOT schaltend THEN state:=KEY; END_IF
+
+IF long_time > T#0S THEN
+	longon(IN:=KEY,PT:=long_time);
+	IF longon.Q THEN
+		rising_edge:=false;
+		longon.IN:=FALSE;
+		keywaslong:=TRUE;
+		longon();
+	END_IF
+END_IF
+KEY_bool_old:=KEY;
+]]></ST>
+    </Implementation>
+    <Method Name="isActive" Id="{4ee469b8-93f8-4ce2-b77a-81d4b84e0d2d}">
+      <Declaration><![CDATA[METHOD isActive : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[isActive:=state;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="setOFF" Id="{950ef05b-d402-4eb1-adaa-ceefeee4b6d0}">
+      <Declaration><![CDATA[METHOD setOFF : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[state:=false;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="setON" Id="{51331d44-f28e-4357-a38b-36c6cffeb542}">
+      <Declaration><![CDATA[METHOD setON : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[state:=TRUE;
+keywaspushed:=true;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="wasLongInput" Id="{1a5d00d2-86c6-46b9-b81a-5af9c49c0ac8}">
+      <Declaration><![CDATA[METHOD wasLongInput : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF keywaslong THEN
+	wasLongInput:=TRUE;
+	keywaslong:=FALSE;
+ELSE
+	wasLongInput:=false;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="wasRising" Id="{5518e2c2-3075-44f1-8c32-26091beeff42}">
+      <Declaration><![CDATA[METHOD wasRising : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[wasRising:=keywaspushed;
+keywaspushed:=false;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_BeckhoffTaster">
+      <LineId Id="398" Count="36" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_BeckhoffTaster.isActive">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_BeckhoffTaster.setOFF">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_BeckhoffTaster.setON">
+      <LineId Id="9" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_BeckhoffTaster.wasLongInput">
+      <LineId Id="6" Count="4" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_BeckhoffTaster.wasRising">
+      <LineId Id="9" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

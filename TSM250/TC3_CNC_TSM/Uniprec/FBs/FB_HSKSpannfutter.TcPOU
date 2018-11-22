@@ -1,0 +1,468 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.9">
+  <POU Name="FB_HSKSpannfutter" Id="{fa8b8566-47f4-446f-b8c4-aa744384b08b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_HSKSpannfutter
+VAR_INPUT
+	axisEnable:BOOL;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	WerkzeugGespannt AT %I*:BIT;
+	OhneWerkzeugGespannt AT %I*:BIT;
+	Entspannt AT %I*:BIT;
+	Zustand:INT:=0;
+	V11 AT %Q*:BIT:=FALSE;//spannen
+	V12 AT %Q*:BIT:=FALSE;//Lösen
+	V2 AT %Q*:BIT:=FALSE;//Kegelreinigung
+	nV2 AT %Q*:BIT:=FALSE;//Kegelreinigung
+	
+	Statuswort1 AT %I*:UINT;
+	IstDrehzahl:LREAL;
+	Wirkstrom AT %I*:UINT; //Einheit 0.1 Prozent
+	
+	SollDrehzahl:LREAL;
+	SollRPM:DINT;
+	VarOverride: LREAL;
+	IstRPM:DINT;
+	scale:LREAL:=36;
+	dir:MC_Direction;
+	
+	state:UINT:=0;
+	
+	StrLoad:STRING;
+	StrRPM:STRING;
+	RealLoad:LREAL;
+	Wirkstrom_Filter: REAL;
+
+	
+	Spindel							: AXIS_REF;
+	ReadVelocity					: MC_ReadActualVelocity;
+	PowerAxis						: MC_Power;
+	// debug function block output data 
+	PowerAxisOut					: ST_McOutputs;
+	
+	ResetAxis						: MC_Reset;
+	ResetAxisOut					:ST_McOutputs;
+	
+	MoveVelo1						: MC_MoveVelocity;
+	// debug function block output data 
+	MoveVeloOut1					: ST_McOutputs;
+
+	Halt							: MC_Halt;
+	// debug function block output data 
+	HaltOut						: ST_McOutputs;
+	
+	SW_Fehler: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ACTSpindel();
+ACTHSK();
+]]></ST>
+    </Implementation>
+    <Action Name="ACTHSK" Id="{2846dfc3-4770-4a48-b6dd-40e3884d067c}">
+      <Implementation>
+        <ST><![CDATA[CASE Zustand OF
+	0://init
+		V11:=TRUE;
+		V12:=FALSE;
+		V2:=FALSE;
+		Zustand:=1;
+	1://Gespannt
+		V11:=TRUE;
+		V12:=FALSE;
+		V2:=FALSE;
+	2://entspannt
+		V11:=FALSE;
+		V12:=TRUE;
+		V2:=TRUE;
+END_CASE
+nV2:=NOT V2;
+
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACTSpindel" Id="{510ea8d5-50c1-49c1-bd66-a052a69e211b}">
+      <Implementation>
+        <ST><![CDATA[CASE state OF
+	0://init
+		state:=1;
+	1://reset
+		state:=11;
+		SW_Fehler:=FALSE;
+		ResetAxis.Execute:=TRUE;
+		PowerAxis.Enable:=FALSE;
+		MoveVelo1.Execute:=FALSE;
+		Halt.Execute:=FALSE;
+	11://reset2
+		IF ResetAxisOut.Done OR ResetAxisOut.Error THEN
+			ResetAxis.Execute:=false;
+			state:=3;
+		END_IF
+	2://run
+		IF NOT axisEnable THEN state:=3; END_IF
+		PowerAxis.Enable:=axisEnable AND WerkzeugGespannt;
+		PowerAxis.Enable_Negative:=axisEnable;
+		PowerAxis.Enable_Positive:=axisEnable;
+		MoveVelo1.Execute:=TRUE;
+		MoveVelo1.Direction:=Dir;
+		MoveVelo1.Velocity:=SollDrehzahl;
+		
+		IF MoveVelo1.InVelocity THEN
+			MoveVelo1.Execute:=FALSE;
+			state:=21; 
+		END_IF
+	21://running in rev
+		IF NOT axisEnable THEN state:=3; END_IF
+	3://stop
+		Halt.Execute:=TRUE;
+		MoveVelo1.Execute:=FALSE;
+		IF HaltOut.Done OR HaltOut.Error THEN
+			Halt.Execute:=FALSE;
+			state:=31;
+		END_IF
+	31://regelsperre nach stop
+		PowerAxis.Enable:=FALSE;
+END_CASE
+
+IstRPM:=LREAL_TO_DINT(IstDrehzahl/scale);
+Wirkstrom_Filter:=(UINT_TO_REAL(Wirkstrom)*0.1)*0.08+(Wirkstrom_Filter*0.92);
+//IF Wirkstrom_Filter<0.01 THEN Wirkstrom_Filter:=0.0; END_IF
+StrLoad:=REAL_TO_STRING(INT_TO_REAL(REAL_TO_INT(Wirkstrom_Filter * 100.0)) / 100.0); //Ist so Kompliziert weil Rundung auf 2 Nachkommastellen.
+RealLoad:=UINT_TO_REAL(REAL_TO_UINT(Wirkstrom_Filter));
+StrRPM:=DINT_TO_STRING(IstRPM);
+
+SW_Fehler:=PowerAxisOut.Error OR MoveVeloOut1.Error OR HaltOut.Error;
+
+PowerAxis.Enable:=axisEnable AND WerkzeugGespannt;
+PowerAxis.Enable_Negative:=axisEnable;
+PowerAxis.Enable_Positive:=axisEnable;
+
+PowerAxis(Axis:=Spindel,Busy=>PowerAxisOut.Busy, Active=>PowerAxisOut.Active, Error=>PowerAxisOut.Error, ErrorID=>PowerAxisOut.ErrorID, Override:=VarOverride);
+MoveVelo1(Axis:=Spindel,Busy=>MoveVeloOut1.Busy, Active=>MoveVeloOut1.Active, Error=>MoveVeloOut1.Error, ErrorID=>MoveVeloOut1.ErrorID, CommandAborted=>MoveVeloOut1.CommandAborted );
+Halt(Axis:=Spindel, Busy=>HaltOut.Busy , Active=>HaltOut.Active, Error=>HaltOut.Error, ErrorID=>HaltOut.ErrorID, Done=>HaltOut.Done, CommandAborted=>HaltOut.CommandAborted);
+ResetAxis(Axis:=Spindel, Done=>ResetAxisOut.Done, Busy=>ResetAxisOut.Busy, Error=>ResetAxisOut.Error, ErrorID=>ResetAxisOut.ErrorID);
+
+ReadVelocity(
+	Axis:= Spindel, 
+	Enable:= TRUE, 
+	Valid=> , 
+	Busy=> , 
+	Error=> , 
+	ErrorID=> , 
+	ActualVelocity=> IstDrehzahl);]]></ST>
+      </Implementation>
+    </Action>
+    <Method Name="getLoad" Id="{365ee192-dc28-4404-a5f4-6b8ae29d8269}">
+      <Declaration><![CDATA[METHOD getLoad : LREAL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getLoadString" Id="{569711f6-ff24-4c53-a1b7-21c5d923c9fa}">
+      <Declaration><![CDATA[METHOD getLoadString : String
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getLoadString:=CONCAT(str1:=StrLoad, str2:=' %');]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetReinigung" Id="{9c4e977c-39c9-45f8-a7f0-c146a3edb96c}">
+      <Declaration><![CDATA[METHOD GetReinigung : UINT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF V2 THEN
+	GetReinigung:=1;
+ELSE
+	GetReinigung:=2;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getRPM" Id="{81ae5ed7-3ac4-4c2f-b9fd-3b869dbc58a7}">
+      <Declaration><![CDATA[METHOD getRPM : DINT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getRPM:=IstRPM;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetVentil1" Id="{e4fe51ba-d061-4c03-b5fe-494500e84fd8}">
+      <Declaration><![CDATA[METHOD GetVentil1 : UINT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF V11 AND NOT V12 THEN
+	GetVentil1:=2;
+ELSIF NOT V11 AND V12 THEN
+	GetVentil1:=1;
+ELSE
+	GetVentil1:=0;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="inRev" Id="{2b9d1383-f758-458b-866b-c281cb82fc74}">
+      <Declaration><![CDATA[METHOD inRev : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF state=21 THEN
+	inrev:=TRUE;
+ELSE
+	inrev:=FALSE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="isBusy" Id="{9b3ab02e-f71a-4199-8326-682aed2bb339}">
+      <Declaration><![CDATA[METHOD isBusy : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF state=2 THEN isBusy:=TRUE; ELSE isBusy:=FALSE; END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="isError" Id="{8dbf07e8-ed53-41b3-8fdd-b5038c88887c}">
+      <Declaration><![CDATA[METHOD isError : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[isError:=GETBIT32(Statuswort1,5) OR SW_Fehler;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Loesen" Id="{d0e73236-6ac0-4745-ac8c-83f0a066225b}">
+      <Declaration><![CDATA[METHOD Loesen : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Zustand:=2;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{752d5782-facc-4de6-90b4-6e659924284b}">
+      <Declaration><![CDATA[METHOD Reset : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[state:=1;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="setOverride" Id="{ba75bc9c-ab6d-4f7e-a756-df29c9f3f23a}">
+      <Declaration><![CDATA[METHOD setOverride
+VAR_INPUT
+	Override:UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[VarOverride:=UINT_TO_LREAL(Override);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="setRPM" Id="{4e449572-1f85-463b-8ad1-c20db836c32e}">
+      <Declaration><![CDATA[METHOD setRPM : BOOL
+VAR_INPUT
+	Drehzahl:UINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[SollRPM:=Drehzahl;
+SollDrehzahl:=Drehzahl*scale;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Spannen" Id="{c449c0bd-a5bf-4598-8c10-e0b3e0d053db}">
+      <Declaration><![CDATA[METHOD Spannen : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Zustand:=1;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="start" Id="{8167d30d-2de8-44b4-bcc7-de795eb3c561}">
+      <Declaration><![CDATA[METHOD start : BOOL
+VAR_INPUT
+	RPM:DINT:=SollRPM;
+	Direction:MC_Direction;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT axisEnable=TRUE THEN 
+	MSG_WARNING_List[1] := TRUE; //nicht möglich weil kein enable
+ELSIF NOT WerkzeugGespannt THEN
+	MSG_ALARM_List[1]:=TRUE; //nicht möglich weil kein werkzeug
+ELSE 
+	IF NOT(state=2 OR state=21) THEN //wenn noch keine bewegung stattfindet
+		state:=2;
+		SollDrehzahl:=DINT_TO_LREAL(RPM)*scale;
+		SollRPM:=RPM;
+		dir:=Direction;
+	ELSIF NOT(SollRPM=RPM) OR NOT (Direction=dir) THEN //wenn eine endere drehzahl oder Richtung gefordert wird
+		state:=2;
+		SollDrehzahl:=DINT_TO_LREAL(RPM)*scale;
+		SollRPM:=RPM;
+		dir:=Direction;
+	END_IF
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="stop" Id="{4bb458e6-4e52-43ee-9b9a-d95b43a4d437}">
+      <Declaration><![CDATA[METHOD stop : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[state:=3;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Toggle" Id="{643d4093-a744-4774-a6c5-df58a490e157}">
+      <Declaration><![CDATA[METHOD Toggle : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Zustand=1 THEN
+	Zustand:=2;
+ELSE
+	Zustand:=1;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_HSKSpannfutter">
+      <LineId Id="75" Count="0" />
+      <LineId Id="113" Count="0" />
+      <LineId Id="192" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.ACTHSK">
+      <LineId Id="2" Count="16" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.ACTSpindel">
+      <LineId Id="2" Count="3" />
+      <LineId Id="7" Count="1" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="75" Count="2" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="57" Count="1" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="63" Count="2" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="96" Count="0" />
+      <LineId Id="61" Count="1" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="53" Count="1" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="28" Count="1" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="30" Count="2" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="43" Count="3" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="48" Count="1" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="80" Count="6" />
+      <LineId Id="79" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.getLoad">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.getLoadString">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.GetReinigung">
+      <LineId Id="5" Count="1" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.getRPM">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.GetVentil1">
+      <LineId Id="5" Count="1" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.inRev">
+      <LineId Id="5" Count="1" />
+      <LineId Id="8" Count="1" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.isBusy">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.isError">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.Loesen">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.Reset">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.setOverride">
+      <LineId Id="8" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.setRPM">
+      <LineId Id="7" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.Spannen">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.start">
+      <LineId Id="5" Count="0" />
+      <LineId Id="22" Count="1" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="54" Count="1" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="57" Count="1" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="21" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.stop">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HSKSpannfutter.Toggle">
+      <LineId Id="5" Count="1" />
+      <LineId Id="8" Count="1" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

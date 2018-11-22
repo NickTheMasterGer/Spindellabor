@@ -1,0 +1,143 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.9">
+  <POU Name="FB_IFM_SV7200" Id="{bb265f9b-5a03-4f9d-b098-008d69c4ceeb}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_IFM_SV7200
+VAR_INPUT
+	Grenzwert: REAL; //L/min
+	Aktuator_Vorhanden:BOOL:=false;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	IOData AT %I*:UDINT;
+	Actuator AT %Q*:Bool;
+	IOData2:DWORD;
+	Durchfluss:REAL;
+	Temperatur:REAL;
+	OUT1:BOOL;
+	OUT2:BOOL;
+	Sensor :BOOL:=FALSE;
+	notSensor :BOOL:=FALSE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IOData2:=UDINT_TO_DWORD(IOData);
+OUT1:=GETBIT32(inVal32:= IOData2, bitNo:= 0);
+OUT2:=GETBIT32(inVal32:= IOData2, bitNo:= 1);
+IOData2:=SHR32(IOData2, 2);
+Temperatur:=UDINT_TO_REAL(IOData2 AND 16#3FFF)*0.1;
+IOData2:=SHR32(IOData2,14);
+Durchfluss:=UDINT_TO_REAL(IOData2 AND 16#FFFF)*0.1;
+IF durchfluss>grenzwert THEN
+	Sensor:=TRUE;
+ELSE
+	Sensor:=FALSE;
+END_IF
+notSensor:=NOT Sensor;
+IF not Aktuator_vorhanden THEN
+	Actuator:=sensor;
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="getActuatorState" Id="{8b632942-b54b-4c1d-b94b-14814593ca02}">
+      <Declaration><![CDATA[METHOD getActuatorState : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getActuatorState:=Actuator;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getFlow" Id="{9c7cbd44-9dc4-4a4c-9f0a-358af6cd8df4}">
+      <Declaration><![CDATA[METHOD getFlow : real
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getFlow:=Durchfluss;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getFlowString" Id="{e3ab816f-0413-4928-851f-839560140a3e}">
+      <Declaration><![CDATA[METHOD getFlowString : string
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getFlowString:=CONCAT(STR1:=REAL_TO_STRING(Durchfluss), STR2:=' l/min');]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getTemp" Id="{4719a48f-7815-44e7-a398-b7623e9c6421}">
+      <Declaration><![CDATA[METHOD getTemp : real
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getTemp:=Temperatur;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getTempString" Id="{6ed2775e-3747-4686-9cd6-ee026fa6e7b0}">
+      <Declaration><![CDATA[METHOD getTempString : string
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getTempString:=CONCAT(STR1:=REAL_TO_STRING(Temperatur), STR2:=' °C');]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="isActive" Id="{1fe71abc-ab33-47ad-b61c-109fb0c15b2e}">
+      <Declaration><![CDATA[METHOD isActive : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Sensor AND Actuator THEN isActive:=TRUE; 
+ELSIF (NOT Sensor) AND Actuator THEN isActive:=vBlink;
+ELSIF SENSOR AND (NOT Actuator) THEN isActive:=vBlink;
+else isActive:=false; END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="setState" Id="{ce51434d-7399-4f01-8ca4-9685f841315e}">
+      <Declaration><![CDATA[METHOD setState : BOOL
+VAR_INPUT
+	state:bool;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Actuator:=state;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_IFM_SV7200">
+      <LineId Id="77" Count="0" />
+      <LineId Id="54" Count="1" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="56" Count="3" />
+      <LineId Id="96" Count="0" />
+      <LineId Id="99" Count="1" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="119" Count="1" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SV7200.getActuatorState">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SV7200.getFlow">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SV7200.getFlowString">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SV7200.getTemp">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SV7200.getTempString">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SV7200.isActive">
+      <LineId Id="2" Count="0" />
+      <LineId Id="6" Count="2" />
+    </LineIds>
+    <LineIds Name="FB_IFM_SV7200.setState">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

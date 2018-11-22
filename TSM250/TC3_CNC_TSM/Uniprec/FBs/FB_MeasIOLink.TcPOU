@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.9">
+  <POU Name="FB_MeasIOLink" Id="{b55eb8fc-55b4-4c21-bd10-e70a006e37a7}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_MeasIOLink
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	Ventile AT %Q*:UINT:=0;
+
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <LineIds Name="FB_MeasIOLink">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

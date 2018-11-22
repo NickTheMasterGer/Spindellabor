@@ -1,0 +1,122 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.9">
+  <POU Name="FB_IFM_PN2x99" Id="{9021e297-8ee1-4a86-9c93-5032712ffc9c}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_IFM_PN2x99
+VAR_INPUT
+	Grenzwert:REAL; //Grenzwer für HMI Blinken
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	IOData AT %I*:INT;
+	V12 AT %Q*:BOOL;
+	V14 AT %Q*:BOOL;
+	
+	IOData2:INT;
+	Druck:REAL; //mbar (-1000 to 1100)
+	OUT1:BOOL;
+	OUT2:BOOL;
+	
+	state:INT:=1;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[OUT1:=GETBIT32(inVal32:= IOData, bitNo:= 0);
+OUT2:=GETBIT32(inVal32:= IOData, bitNo:= 1);
+
+IOData2:=(IOData/4);
+Druck:=INT_TO_REAL(IOData2);
+IF Druck>Grenzwert THEN
+	MSG_WARNING_List[2]:=TRUE;
+END_IF
+CASE state OF
+	1://off
+		V12:=FALSE;
+		V14:=FALSE;
+	2://wait on
+		V12:=TRUE;
+		V14:=FALSE;
+		state:=3;
+	3://on
+		V12:=FALSE;
+		V14:=FALSE;
+	4://wait off
+		V12:=FALSE;
+		V14:=TRUE;
+		state:=1;
+	ELSE
+		state:=1;
+END_CASE]]></ST>
+    </Implementation>
+    <Method Name="getPressureString" Id="{dd23d905-d822-441c-a6e4-424ea0b73e2d}">
+      <Declaration><![CDATA[METHOD getPressureString : string
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getPressureString:=CONCAT(STR1:=REAL_TO_STRING(Druck), STR2:=' mBar');]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="isActive" Id="{4f312e7e-cfa0-4823-ac0b-7b01c37bcf11}">
+      <Declaration><![CDATA[METHOD isActive : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF (Druck<Grenzwert) AND state=3 THEN isActive:=TRUE;
+ELSIF (Druck>Grenzwert) AND state=3 THEN isActive:=vBlink;
+ELSE isActive:=FALSE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="setState" Id="{bacb4c47-e79a-4cdd-b97d-37e41eb03924}">
+      <Declaration><![CDATA[METHOD setState : BOOL
+VAR_INPUT
+	Enable:BOOL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF enable AND state=1 THEN
+	state:=2;
+ELSIF NOT enable AND state=3 THEN
+	state:=4;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_IFM_PN2x99">
+      <LineId Id="54" Count="1" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="98" Count="1" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="86" Count="1" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="88" Count="1" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="82" Count="0" />
+      <LineId Id="90" Count="1" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="92" Count="1" />
+      <LineId Id="95" Count="2" />
+      <LineId Id="81" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_PN2x99.getPressureString">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_PN2x99.isActive">
+      <LineId Id="2" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IFM_PN2x99.setState">
+      <LineId Id="5" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="12" Count="1" />
+      <LineId Id="11" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

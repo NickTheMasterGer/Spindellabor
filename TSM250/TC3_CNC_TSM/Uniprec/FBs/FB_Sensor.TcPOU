@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.9">
+  <POU Name="FB_Sensor" Id="{d74e825a-653c-4340-9b40-d8020f4f45f6}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Sensor
+VAR_INPUT
+	lock:bool:=false;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	Sensor AT %I*:BOOL:=FALSE;
+	notSensor AT %I*:BOOL:=false;
+	Q :BOOL;
+	trigger:R_TRIG;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF NOT lock THEN
+	trigger(CLK:=(Sensor XOR (NOT notSensor)));
+	IF trigger.Q THEN Q:=TRUE; END_IF
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="isActive" Id="{d0b19cee-9c78-4c15-b332-6b44a2214aa0}">
+      <Declaration><![CDATA[METHOD isActive : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Sensor then isActive:=true; else isActive:=false; End_if]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="quitRising" Id="{a9cbc78f-c24e-4670-9390-01c922e4e188}">
+      <Declaration><![CDATA[METHOD quitRising : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Q:=false;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="wasRising" Id="{617a1664-9f50-4ccb-8b7a-18b7444808d5}">
+      <Declaration><![CDATA[METHOD wasRising : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[wasRising:=Q;
+Q:=false;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Sensor">
+      <LineId Id="16" Count="0" />
+      <LineId Id="3" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Sensor.isActive">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Sensor.quitRising">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Sensor.wasRising">
+      <LineId Id="6" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

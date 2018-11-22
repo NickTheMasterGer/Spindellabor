@@ -1,0 +1,172 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="TSM" Id="{66d2a684-4b34-495f-b986-62233d7bcf49}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM TSM
+VAR
+	ResetHandler:FB_ResetSafetyHandler;
+	ResetBtnOut AT %Q*:BOOL;
+	AckDriveSafetyError AT %Q*:BOOL;
+	EstopFromSafety AT %I*:BOOL;
+	ErrorFromSafety AT %I*:BOOL;
+	Override_Poti AT %I*:INT:=32700;
+	DriveAckDelay:TOF;
+	AllowEnable: BOOL;
+	
+	Door: FB_Door;
+	DruckluftHS:FB_Actor;
+	DruckluftSens:FB_Sensor;
+	KMPumpe:FB_Actor;
+	KSM_Spindel:FB_IFM_SV7200;
+	KSM_Wanne:FB_Actor;
+	Vakuum AT %Q*:bool;
+	WanneFuellstand AT %I*:INT;
+	
+	BtnEStop:FB_BeckhoffTaster;
+	BtnReset :FB_BeckhoffTaster;
+	BtnGreen :FB_BeckhoffTaster;
+	BtnRed :FB_BeckhoffTaster;
+	Btn1 :FB_BeckhoffTaster; //Werkzeugwechsel
+	Btn2 :FB_BeckhoffTaster;
+	Btn3 :FB_BeckhoffTaster;
+	Btn4 :FB_BeckhoffTaster;
+	Btn5 :FB_BeckhoffTaster; //Open Door
+	
+	abyOutput: ARRAY [0..MAX_FAST_M_FUNC_OUTPUT_IDX] OF BYTE; 
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+//Aufrufe der Funktionen
+IF BtnReset.wasRising() THEN
+	ResetHandler.do_Reset();
+	Door.Close();
+END_IF
+
+UPStart:=BtnGreen.isActive();
+UPStop:=BtnRed.isActive();
+
+ResetHandler(estop_ok_from_safety:=EstopFromSafety);
+//IF NOT EstopFromSafety THEN PLCAxisEnable:=FALSE; END_IF
+
+PlcFeedOverride:=INT_TO_UINT(Override_Poti/327);
+
+Door();
+MSG_WARNING_List[6]:=NOT Door.isLocked();
+DruckluftHS();
+DruckluftHS.setState(Druckluft_From_HMI);
+
+//SpindelHSK(axisEnable:=PLCAxisEnable);
+
+BtnEStop();
+BtnReset();
+BtnGreen();
+BtnRed();
+Btn1(schaltend:=TRUE);
+Btn2(schaltend:=TRUE);
+Btn3();
+Btn4();
+Btn5();
+
+IF Btn5.wasRising() THEN
+	PLCAxisEnable:=FALSE; 
+	Door.Open();
+END_IF
+
+
+KSM_Spindel.setState(Btn1.isActive());
+KSM_Wanne.setState(	NOT	Btn1.isActive()); //wur Wanne Spülen, wenn die Innenkühlung nicht aktiv ist
+GlobalUniprec.strKSMt:=CONCAT(STR1:='KSM\n', STR2:=KSM_Spindel.getFlowString());
+GlobalUniprec.strKSMt:=CONCAT(STR1:=GlobalUniprec.strKSMt ,STR2:='\n');
+GlobalUniprec.strKSMt:=CONCAT(STR1:=GlobalUniprec.strKSMt , STR2:=KSM_Spindel.getTempString());
+KSM_Spindel(Aktuator_Vorhanden:=TRUE);
+
+Vakuum:=Btn2.isActive();
+
+Mfct();
+
+UPManualModebKeyNeg:=Btn3.isActive();
+UPManualModebKeyPos:=Btn4.isActive();]]></ST>
+    </Implementation>
+    <Method Name="doReset" Id="{16bea398-0baf-41a9-b487-5896b120f0fc}">
+      <Declaration><![CDATA[METHOD doReset : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Mfct" Id="{7d28f0d2-c8ff-4b68-a048-feb88c46d8b0}">
+      <Declaration><![CDATA[METHOD Mfct : BOOL
+VAR_INPUT
+END_VAR
+VAR
+
+	M :POINTER TO ARRAY [0..999] OF ST_TechnoAttributeData:=ADR(CNCSystem.Channel[0].M);
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF M^[7].bState_rw=TRUE THEN
+	M^[7].bState_rw :=FALSE;
+	Btn1.setON();
+END_IF
+
+IF M^[9].bState_rw=TRUE THEN
+	M^[9].bState_rw :=FALSE;
+	Btn1.setOFF();
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="TSM">
+      <LineId Id="34" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="203" Count="0" />
+      <LineId Id="240" Count="0" />
+      <LineId Id="274" Count="0" />
+      <LineId Id="241" Count="0" />
+      <LineId Id="205" Count="0" />
+      <LineId Id="204" Count="0" />
+      <LineId Id="202" Count="0" />
+      <LineId Id="239" Count="0" />
+      <LineId Id="206" Count="0" />
+      <LineId Id="308" Count="0" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="118" Count="0" />
+      <LineId Id="46" Count="3" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="155" Count="0" />
+      <LineId Id="50" Count="12" />
+      <LineId Id="307" Count="0" />
+      <LineId Id="63" Count="1" />
+      <LineId Id="167" Count="0" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="156" Count="0" />
+      <LineId Id="159" Count="0" />
+      <LineId Id="158" Count="0" />
+      <LineId Id="123" Count="0" />
+      <LineId Id="157" Count="0" />
+      <LineId Id="121" Count="0" />
+      <LineId Id="119" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="161" Count="0" />
+      <LineId Id="163" Count="0" />
+      <LineId Id="162" Count="0" />
+    </LineIds>
+    <LineIds Name="TSM.doReset">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="TSM.Mfct">
+      <LineId Id="66" Count="0" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="77" Count="0" />
+      <LineId Id="70" Count="0" />
+      <LineId Id="74" Count="2" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="72" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

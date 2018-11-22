@@ -1,0 +1,228 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_ResetSafetyHandler" Id="{f5de3d34-8f56-43fc-a4aa-5d5a076c1dc1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_ResetSafetyHandler
+VAR_INPUT
+	estop_ok_from_safety: BOOL;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	safety_state:UINT:=1;
+	reset: BOOL;
+	
+	reset_timeout: INT;
+	pReetTimeout: INT:=500;
+	drive_safety_error: BOOL;
+	
+	reset_safetyPLC AT %Q*: BOOL;
+	reset_drive AT %Q*: BOOL;
+	reset_safety AT %Q*: BOOL;
+	
+	safety_error AT %I*: BOOL;
+	drive_x_error AT %I*:BOOL;
+	drive_y_error AT %I*:BOOL;
+	drive_z_error AT %I*:BOOL;
+	drive_c_error AT %I*:BOOL;
+	drive_s_error AT %I*:BOOL;
+	safetyPLC_error: BOOL;
+	safetyPLC_COM_error AT %I*: BOOL;
+	safetyPLC_FB_error AT %I*: BOOL;
+	safetyPLC_Out_error AT %I*: BOOL;
+	safetyPLC_Other_error AT %I*: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE safety_state OF
+	1: //Safety PLC in error
+		IF reset THEN 
+			reset_safetyPLC:=TRUE;
+			safety_state:=2;
+		END_IF		
+	2:
+		reset_timeout:=reset_timeout+1;
+		IF reset_timeout>200 THEN reset_safetyPLC:=FALSE; END_IF
+		
+		IF reset_timeout>pReetTimeout THEN
+			reset:=FALSE;
+			reset_timeout:=0;
+			reset_safetyPLC:=FALSE;
+			safety_state:=1;
+			MSG_Alarm_List[22]:=TRUE;
+		END_IF
+		IF NOT safetyPLC_error THEN
+			reset_timeout:=0;
+			reset_safetyPLC:=FALSE;
+			safety_state:=10;
+		END_IF
+		
+	10: //drive in error
+		IF reset THEN 
+			reset_drive:=TRUE;
+			safety_state:=12;
+		END_IF
+	12:
+		reset_timeout:=reset_timeout+1;
+		IF reset_timeout>100 THEN reset_drive:=FALSE; END_IF
+		
+		IF reset_timeout>pReetTimeout THEN
+			reset:=FALSE;
+			reset_timeout:=0;
+			reset_drive:=FALSE;
+			safety_state:=10;
+			MSG_Alarm_List[23]:=TRUE;
+		END_IF
+		
+		IF NOT drive_safety_error THEN
+			reset_timeout:=0;
+			reset_drive:=FALSE;
+			safety_state:=20;
+		END_IF
+		
+	20: //safety in error
+		IF reset THEN
+			reset_safety:=TRUE;
+			safety_state:=21;
+		END_IF
+	21:
+		reset_timeout:=reset_timeout+1;
+		IF reset_timeout>5 THEN reset_safety:=FALSE; END_IF
+		
+		IF reset_timeout>pReetTimeout THEN
+			reset:=FALSE;
+			reset_timeout:=0;
+			reset_safety:=FALSE;
+			safety_state:=20;
+			MSG_Alarm_List[24]:=TRUE;
+		END_IF
+		
+		IF NOT safety_error AND estop_ok_from_safety THEN
+			reset_timeout:=0;
+			reset_safety:=FALSE;
+			safety_state:=30;
+		END_IF
+	
+	30: //reset CNC
+		varResetCNC:=TRUE;
+		PLCMachineMode[0].Reset:=TRUE;
+		safety_state:=31;
+	31:
+		varResetCNC:=FALSE;
+		IF PLCMachineMode[0].Reset=FALSE THEN
+			PLCAxisEnable:=TRUE;
+			safety_state:=40;
+		END_IF
+	40:
+		reset:=FALSE;
+		safety_state:=41;
+	41:
+		IF reset THEN
+			safety_state:=1;
+		END_IF
+		
+			
+END_CASE
+
+IF (safety_error OR NOT estop_ok_from_safety) AND safety_state >=30 THEN safety_state:=20; END_IF
+IF drive_safety_error AND safety_state >=20 THEN safety_state:=1; END_IF
+
+
+ACT_DriveErrors();
+ACT_SafetyPLCErrors();]]></ST>
+    </Implementation>
+    <Action Name="ACT_DriveErrors" Id="{ed6f8671-25fa-4a0a-abba-dcc7066d2cdb}">
+      <Implementation>
+        <ST><![CDATA[MSG_Alarm_List[30]:=	drive_x_error;
+MSG_Alarm_List[31]:=	drive_y_error;
+MSG_Alarm_List[32]:=	drive_z_error;
+MSG_Alarm_List[33]:=	drive_c_error;
+MSG_Alarm_List[34]:=	drive_s_error;
+
+drive_safety_error:= 	drive_x_error OR
+						drive_y_error OR
+						drive_z_error OR
+						drive_c_error OR
+						drive_s_error;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_SafetyPLCErrors" Id="{f9007836-9ce5-41ce-aa78-0e7a4a84abd6}">
+      <Implementation>
+        <ST><![CDATA[MSG_Alarm_List[35]:=	safetyPLC_COM_error;
+MSG_Alarm_List[36]:=	safetyPLC_FB_error;
+MSG_Alarm_List[37]:=	safetyPLC_Out_error;
+MSG_Alarm_List[38]:=	safetyPLC_Other_error;
+
+safetyPLC_error:=		safetyPLC_COM_error OR
+						safetyPLC_FB_error OR
+						safetyPLC_Out_error OR
+						safetyPLC_Other_error;]]></ST>
+      </Implementation>
+    </Action>
+    <Method Name="do_Reset" Id="{cd5b0a3d-bd67-4da1-875d-91b59a6a589e}">
+      <Declaration><![CDATA[METHOD do_Reset : BOOL
+VAR_INPUT
+END_VAR
+
+VAR
+	i: UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR i:=FIRST_MESSAGE TO LAST_MESSAGE DO
+	MSG_WARNING_List[i]:=FALSE;
+	MSG_ALARM_List[i]:=FALSE;
+END_FOR
+
+IF NOT reset THEN reset:=TRUE; END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_ResetSafetyHandler">
+      <LineId Id="293" Count="7" />
+      <LineId Id="450" Count="0" />
+      <LineId Id="301" Count="3" />
+      <LineId Id="482" Count="0" />
+      <LineId Id="306" Count="4" />
+      <LineId Id="481" Count="0" />
+      <LineId Id="312" Count="9" />
+      <LineId Id="376" Count="0" />
+      <LineId Id="322" Count="3" />
+      <LineId Id="483" Count="0" />
+      <LineId Id="327" Count="5" />
+      <LineId Id="484" Count="0" />
+      <LineId Id="334" Count="9" />
+      <LineId Id="375" Count="0" />
+      <LineId Id="344" Count="10" />
+      <LineId Id="485" Count="0" />
+      <LineId Id="356" Count="4" />
+      <LineId Id="407" Count="0" />
+      <LineId Id="361" Count="2" />
+      <LineId Id="411" Count="0" />
+      <LineId Id="410" Count="0" />
+      <LineId Id="364" Count="0" />
+      <LineId Id="412" Count="0" />
+      <LineId Id="365" Count="1" />
+      <LineId Id="415" Count="4" />
+      <LineId Id="414" Count="0" />
+      <LineId Id="367" Count="7" />
+      <LineId Id="224" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_ResetSafetyHandler.ACT_DriveErrors">
+      <LineId Id="2" Count="3" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="8" Count="3" />
+    </LineIds>
+    <LineIds Name="FB_ResetSafetyHandler.ACT_SafetyPLCErrors">
+      <LineId Id="2" Count="2" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="7" Count="2" />
+    </LineIds>
+    <LineIds Name="FB_ResetSafetyHandler.do_Reset">
+      <LineId Id="6" Count="3" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

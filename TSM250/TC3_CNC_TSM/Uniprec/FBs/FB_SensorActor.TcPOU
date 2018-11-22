@@ -1,0 +1,111 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.9">
+  <POU Name="FB_SensorActor" Id="{1214cd96-e378-4150-a57e-ca749be32708}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_SensorActor
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	state:ActSens_t:=ActSens_inactive;
+	Actuator AT %Q*:BOOL;
+	NotActuator AT %Q*:BOOL;
+	Sensor AT %I*:BOOL:=TRUE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE state OF
+	ActSens_inactive:
+		IF Sensor=NOT Actuator THEN
+			state:=ActSens_error;
+		END_IF
+	ActSens_active:
+		IF Sensor=NOT Actuator THEN
+			state:=ActSens_error;
+		END_IF
+	ActSens_wait_active:
+		Actuator:=TRUE;
+		IF Sensor=Actuator THEN
+			state:=ActSens_active;
+		END_IF
+	ActSens_wait_inactive:
+		Actuator:=FALSE;
+		IF Sensor=Actuator THEN
+			state:=ActSens_inactive;
+		END_IF
+	ActSens_error:
+	
+END_CASE
+NotActuator:=not Actuator;]]></ST>
+    </Implementation>
+    <Method Name="getError" Id="{04ca1cb0-0147-4f37-8f52-f7a5c7478c7a}">
+      <Declaration><![CDATA[METHOD getError : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF state=ActSens_error then getError:=true; else getError:=false; End_if]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="isActive" Id="{ffe40b98-5886-4cb2-aff1-47405ba5700f}">
+      <Declaration><![CDATA[METHOD isActive : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF state=ActSens_active then isActive:=true; else isActive:=false; End_if]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Start" Id="{85b407e9-40ef-45f2-a68b-13ac3bf0ab7b}">
+      <Declaration><![CDATA[METHOD Start : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT (state=ActSens_active) THEN state:=ActSens_wait_active; END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Stop" Id="{92f9b0f3-6c4d-4e71-bd1a-12ce51308cad}">
+      <Declaration><![CDATA[METHOD Stop : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT (state=ActSens_inactive) THEN state:=ActSens_wait_inactive; END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Toggle" Id="{9f0d1d40-b996-47ed-ac36-4d2d0496f44f}">
+      <Declaration><![CDATA[METHOD Toggle : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF state=ActSens_active OR state=ActSens_wait_active THEN 
+	state:=ActSens_wait_inactive; 
+ELSE 
+	state:=ActSens_wait_active; 
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_SensorActor">
+      <LineId Id="3" Count="21" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_SensorActor.getError">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_SensorActor.isActive">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_SensorActor.Start">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_SensorActor.Stop">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_SensorActor.Toggle">
+      <LineId Id="3" Count="3" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
