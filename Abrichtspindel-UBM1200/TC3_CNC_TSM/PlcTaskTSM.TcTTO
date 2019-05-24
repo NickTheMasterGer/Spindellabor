@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.11">
+  <Task Name="PlcTaskTSM" Id="{4c70374f-feb6-499c-85fc-e2b6ffb88948}">
+    <!--CycleTime in micro seconds.-->
+    <CycleTime>2000</CycleTime>
+    <Priority>49</Priority>
+    <PouCall>
+      <Name>TSM</Name>
+    </PouCall>
+    <TaskFBGuid>{5f30c286-142f-412e-9653-24693dede708}</TaskFBGuid>
+    <Fb_init>{b045941e-8e21-4190-90e4-4881e4475821}</Fb_init>
+    <Fb_exit>{b4657749-ff21-4c59-8443-ac66ce39bd2e}</Fb_exit>
+    <CycleUpdate>{00d8a029-31dc-437f-922a-32c74eb7b9a0}</CycleUpdate>
+    <PostCycleUpdate>{44c8cac4-2561-4282-acbf-efcbd272347d}</PostCycleUpdate>
+  </Task>
+</TcPlcObject>

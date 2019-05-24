@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.11">
+  <GVL Name="GlobalUniprec" Id="{e0397056-26ed-4a4e-b6c9-758380bb0387}">
+    <Declaration><![CDATA[VAR_GLOBAL
+	vBlink:BOOL;
+	Poti_to_HMI:INT;
+	Druckluft_From_HMI:BOOL:=TRUE;
+	Vakuum_String_to_HMI:STRING;
+	strKSMt:STRING:='67,3 °C';
+	UPManualModebKeyPos:BOOL;
+	UPManualModebKeyNeg:BOOL;
+	UPStart:BOOL;
+	UPStop:BOOL;
+	DoorOpen AT %I*:BOOL;
+	varResetCNC:BOOL;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

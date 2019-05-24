@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.3">
+  <POU Name="PRG_CNCDebug" Id="{94651a9e-0c8d-4466-87c5-22476e430751}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_CNCDebug
+VAR
+	stCNCSystemDebug 	: POINTER TO ST_CnCSystem;
+	arrgpAxDebug		: ARRAY[0..HLI_SYS_AX_MAXIDX] OF POINTER TO HIGH_LEVEL_INTERFACE_AX;
+	arrgpChDebug		: ARRAY[0..HLI_SYS_CH_MAXIDX] OF POINTER TO HIGH_LEVEL_INTERFACE_CH;
+	nHliAxisIdx         : INT;
+	nHliChannelIdx      : INT;
+	bInit 				: BOOL := FALSE; 
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* ========================================================= *)
+(*    PRG: CNCDebug						                     *)
+(* --------------------------------------------------------- *)
+(*   
+    Desc: PRG provides cnc debug variables 
+*)
+(*                                               
+   Author: TV                                               
+   Date: 01.09.2017                                        
+   Rev.: 1.0                                               
+ =========================================================*) 
+ 
+IF NOT bInit THEN 
+	stCNCSystemDebug := ADR(cncSystem);
+	
+	FOR nHliAxisIdx := 0 TO UDINT_TO_INT(gNrAx-1) DO
+		arrgpAxDebug[nHliAxisIdx] := gpAx[nHliAxisIdx];
+	END_FOR
+	
+	FOR nHliChannelIdx := 0 TO UDINT_TO_INT(gNrCh-1) DO
+		arrgpChDebug[nHliChannelIdx] := gpCh[nHliChannelIdx];
+	END_FOR
+	
+	bInit := TRUE;
+END_IF
+
+//CNCSystem.Channel[0].ToolData.]]></ST>
+    </Implementation>
+    <LineIds Name="PRG_CNCDebug">
+      <LineId Id="28" Count="4" />
+      <LineId Id="44" Count="4" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="10" Count="1" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="18" Count="1" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="50" Count="1" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="13" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
